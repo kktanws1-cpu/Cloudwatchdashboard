@@ -1,0 +1,41 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+cloudwatch-api/node_modules
+
+# Build output
+dist
+dist-ssr
+
+# Environment & secrets — NEVER commit these
+.env
+.env.*
+*.env
+.aws/
+credentials
+aws-credentials*
+
+# Local config
+*.local
+
+# Claude AI working files
+.claude/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
