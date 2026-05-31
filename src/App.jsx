@@ -463,9 +463,9 @@ export default function App() {
   const loadCostIfStale = useCallback(() => {
     const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
     // Clear old cache format that doesn't have history
-    try { const c = JSON.parse(localStorage.getItem("costCacheV2")); if (c?.data && !c.data.history) localStorage.removeItem("costCacheV2"); } catch {}
+    try { const c = JSON.parse(localStorage.getItem("costCacheV3")); if (c?.data && !c.data.history) localStorage.removeItem("costCacheV3"); } catch {}
     try {
-      const cached = localStorage.getItem("costCacheV2");
+      const cached = localStorage.getItem("costCacheV3");
       if (cached) {
         const { ts, data } = JSON.parse(cached);
         if (Date.now() - ts < SEVEN_DAYS) { setCostData(data); return; }
@@ -474,7 +474,7 @@ export default function App() {
     fetchCost().then(d => {
       if (d && !d.error) {
         setCostData(d);
-        localStorage.setItem("costCacheV2", JSON.stringify({ ts: Date.now(), data: d }));
+        localStorage.setItem("costCacheV3", JSON.stringify({ ts: Date.now(), data: d }));
       }
     });
   }, []);
@@ -773,53 +773,66 @@ export default function App() {
               <div style={{fontSize:20,fontWeight:800,color:C.text,marginBottom:18}}>Cost Management</div>
 
               {/* ── 3-month comparison cards ── */}
+              {costData?.history?.length > 0 ? (
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:20}}>
-                {(costData?.history || []).map((m, i) => {
-                  const isCurrentMonth = i === (costData.history.length - 1);
-                  const isLastMonth    = i === (costData.history.length - 2);
+                {costData.history.map((m, i) => {
+                  const h = costData.history;
+                  const isCurrentMonth = i === h.length - 1;
+                  const isLastMonth    = i === h.length - 2;
+                  const monthName = (ym) => { const [y,mo] = ym.split("-"); return new Date(y, mo-1).toLocaleString("en-SG",{month:"short", year:"numeric"}); };
                   const label = isCurrentMonth ? "THIS MONTH" : isLastMonth ? "LAST MONTH" : "2 MONTHS AGO";
 
-                  const renderBadge = (pct, label) => {
-                    if (pct === null || pct === undefined) return null;
-                    if (pct === "NEW") return (
-                      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"#fff5f5",borderRadius:6,padding:"4px 10px",marginBottom:4}}>
-                        <span style={{fontSize:12,fontWeight:700,color:C.red}}>NEW SPEND</span>
-                        <span style={{fontSize:11,color:C.textMute}}>{label}</span>
-                      </div>
-                    );
-                    if (pct === 0) return (
-                      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:C.bg,borderRadius:6,padding:"4px 10px",marginBottom:4}}>
-                        <span style={{fontSize:12,fontWeight:700,color:C.textMute}}>— 0%</span>
-                        <span style={{fontSize:11,color:C.textMute}}>{label}</span>
-                      </div>
-                    );
-                    const up = pct > 0;
-                    return (
-                      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:up?"#fff5f5":C.greenBg,borderRadius:6,padding:"4px 10px",marginBottom:4}}>
-                        <span style={{fontSize:13,color:up?C.red:C.green}}>{up?"▲":"▼"}</span>
-                        <span style={{fontSize:13,fontWeight:700,color:up?C.red:C.green,fontFamily:C.mono}}>{Math.abs(pct)}%</span>
-                        <span style={{fontSize:11,color:C.textMute}}>{up?"higher":"lower"} {label}</span>
-                      </div>
-                    );
-                  };
+                  // Build comparison lines
+                  const compLines = [];
+                  if (isLastMonth && m.pctVsPrev !== null && m.pctVsPrev !== undefined) {
+                    const pct = m.pctVsPrev; const up = pct==="NEW"||pct>0;
+                    compLines.push({ pct, up, text: `vs ${monthName(h[i-1]?.month||"")}` });
+                  }
+                  if (isCurrentMonth) {
+                    if (m.pctVsPrev !== null && m.pctVsPrev !== undefined)
+                      compLines.push({ pct: m.pctVsPrev, up: m.pctVsPrev==="NEW"||m.pctVsPrev>0, text: `vs ${monthName(h[i-1]?.month||"")}` });
+                    if (m.pctVs2Months !== null && m.pctVs2Months !== undefined)
+                      compLines.push({ pct: m.pctVs2Months, up: m.pctVs2Months==="NEW"||m.pctVs2Months>0, text: `vs ${monthName(h[i-2]?.month||"")}` });
+                  }
 
                   return (
                     <div key={m.month} style={{background:isCurrentMonth?C.primaryLight:C.surface,borderRadius:C.r,padding:"20px 24px",boxShadow:C.shadow,border:`1px solid ${isCurrentMonth?C.blueBdr:C.border}`}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                        <div style={{fontSize:11,color:C.textMute,fontWeight:600}}>{label}</div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                        <div style={{fontSize:11,fontWeight:700,color:C.textMute,letterSpacing:"0.06em"}}>{label}</div>
                         {isCurrentMonth && <span style={{fontSize:9,background:C.primary,color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700}}>CURRENT</span>}
                       </div>
-                      <div style={{fontSize:11,color:C.textMute,marginBottom:8}}>{m.month}</div>
-                      <div style={{fontSize:36,fontWeight:900,color:C.text,fontFamily:C.mono,marginBottom:10}}>${m.total?.toLocaleString() ?? "0"}</div>
-                      <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                        {renderBadge(m.pctVsPrev,   isCurrentMonth ? "vs last month"   : isLastMonth ? "vs 2 months ago" : "")}
-                        {isCurrentMonth && renderBadge(m.pctVs2Months, "vs 2 months ago")}
-                        {m.pctVsPrev === null && !isCurrentMonth && <div style={{fontSize:11,color:C.textMute}}>No previous data</div>}
+                      <div style={{fontSize:12,color:C.textMute,marginBottom:10}}>{monthName(m.month)}</div>
+                      <div style={{fontSize:34,fontWeight:900,color:C.text,fontFamily:C.mono,marginBottom:12}}>${m.total?.toLocaleString() ?? "0"}</div>
+                      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                        {compLines.length === 0 && <div style={{fontSize:11,color:C.textMute,fontStyle:"italic"}}>No comparison data</div>}
+                        {compLines.map((c, ci) => {
+                          if (c.pct === "NEW") return (
+                            <div key={ci} style={{display:"flex",alignItems:"center",gap:6,background:"#fff5f5",borderRadius:6,padding:"5px 10px"}}>
+                              <span style={{fontSize:12,fontWeight:800,color:C.red}}>NEW</span>
+                              <span style={{fontSize:11,color:C.textMute}}>first spend {c.text}</span>
+                            </div>
+                          );
+                          if (c.pct === 0) return (
+                            <div key={ci} style={{display:"flex",alignItems:"center",gap:6,background:C.bg,borderRadius:6,padding:"5px 10px"}}>
+                              <span style={{fontSize:12,fontWeight:700,color:C.textMute}}>— same</span>
+                              <span style={{fontSize:11,color:C.textMute}}>{c.text}</span>
+                            </div>
+                          );
+                          return (
+                            <div key={ci} style={{display:"flex",alignItems:"center",gap:6,background:c.up?"#fff5f5":C.greenBg,borderRadius:6,padding:"5px 10px"}}>
+                              <span style={{fontSize:14,fontWeight:700,color:c.up?C.red:C.green}}>{c.up?"▲":"▼"} {Math.abs(c.pct)}%</span>
+                              <span style={{fontSize:11,color:C.textMute}}>{c.up?"higher":"lower"} {c.text}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
                 })}
               </div>
+              ) : (
+                <div style={{background:C.surface,borderRadius:C.r,padding:"20px",marginBottom:20,border:`1px solid ${C.border}`,textAlign:"center",color:C.textMute,fontSize:12}}>Loading cost history...</div>
+              )}
 
               {/* ── Service breakdown + donut ── */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:20,marginBottom:20}}>
