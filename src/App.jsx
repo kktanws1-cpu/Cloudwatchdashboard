@@ -72,12 +72,9 @@ async function fetchRdsPerf() {
 const NAV = [
   { id:"overview",    icon:"⊞",  label:"Overview"          },
   { id:"alarms",      icon:"🔔", label:"Alarms & Alerts",   badge:12, badgeColor:C.red     },
-  { id:"incidents",   icon:"⚠",  label:"Incidents",         badge:4,  badgeColor:C.orange  },
   { id:"services",    icon:"⊡",  label:"Services"           },
   { id:"performance", icon:"📈", label:"Performance"        },
   { id:"canary",      icon:"🐦", label:"Canary Monitoring"  },
-  { id:"infra",       icon:"☁",  label:"Infrastructure"     },
-  { id:"security",    icon:"🛡", label:"Security"           },
   { id:"cost",        icon:"💰", label:"Cost Management"    },
   { id:"settings",    icon:"⚙",  label:"Settings"           },
 ];
@@ -894,7 +891,7 @@ export default function App() {
             </div>
           )}
 
-          {["incidents","infra","security","settings"].includes(activeNav) && (
+          {["settings"].includes(activeNav) && (
             <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:400,color:C.textMute}}>
               <div style={{fontSize:48,marginBottom:16}}>{NAV.find(n=>n.id===activeNav)?.icon}</div>
               <div style={{fontSize:20,fontWeight:700,color:C.text,marginBottom:8}}>{NAV.find(n=>n.id===activeNav)?.label}</div>
