@@ -71,7 +71,7 @@ async function fetchRdsPerf() {
 /* ── Nav ─────────────────────────────────────────────────────────────────── */
 const NAV = [
   { id:"overview",    icon:"⊞",  label:"Overview"          },
-  { id:"alarms",      icon:"🔔", label:"Alarms & Alerts",   badge:12, badgeColor:C.red     },
+  { id:"alarms",      icon:"🔔", label:"Alarms & Alerts",   badge:"ALARMS", badgeColor:C.red     },
   { id:"services",    icon:"⊡",  label:"Services"           },
   { id:"performance", icon:"📈", label:"Performance"        },
   { id:"canary",      icon:"🐦", label:"Canary Monitoring"  },
@@ -623,7 +623,7 @@ export default function App() {
               <button key={n.id} onClick={()=>setActiveNav(n.id)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"9px 10px",borderRadius:C.rSm,border:"none",cursor:"pointer",marginBottom:2,background:active?"linear-gradient(90deg,#eef1ff,#f0f3ff)":"transparent",color:active?C.primary:C.textSub,fontWeight:active?700:500,fontSize:13,fontFamily:C.font,transition:"all 0.15s",textAlign:"left"}}>
                 <span style={{fontSize:15,width:18,textAlign:"center"}}>{n.icon}</span>
                 <span style={{flex:1}}>{n.label}</span>
-                {n.badge&&<span style={{background:n.badgeColor,color:"#fff",borderRadius:10,padding:"1px 6px",fontSize:10,fontWeight:700,minWidth:18,textAlign:"center"}}>{n.badge}</span>}
+                {n.badge&&(()=>{const val=n.badge==="ALARMS"?alarms.length:n.badge; return val>0?<span style={{background:n.badgeColor,color:"#fff",borderRadius:10,padding:"1px 6px",fontSize:10,fontWeight:700,minWidth:18,textAlign:"center"}}>{val}</span>:null;})()}
               </button>
             );
           })}
