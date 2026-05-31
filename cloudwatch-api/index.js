@@ -248,7 +248,9 @@ app.get("/cost", async (req, res) => {
 
     // % change helper
     const pctChange = (curr, prev) => {
-      if (!prev || prev === 0) return null;
+      if (prev === null || prev === undefined) return null;
+      if (prev === 0 && curr === 0) return 0;
+      if (prev === 0 && curr > 0) return "NEW"; // new spend appeared
       return +(((curr - prev) / prev) * 100).toFixed(1);
     };
 
@@ -270,9 +272,9 @@ app.get("/cost", async (req, res) => {
       trend,
       month:    current.month,
       history: [
-        { ...twoMonths,  pctVsPrev: pctChange(twoMonths.total,  null) },
-        { ...lastMonth,  pctVsPrev: pctChange(lastMonth.total,  twoMonths.total) },
-        { ...current,    pctVsPrev: pctChange(current.total,    lastMonth.total) },
+        { ...twoMonths,  pctVsPrev: null,                                         pctVs2Months: null },
+        { ...lastMonth,  pctVsPrev: pctChange(lastMonth.total,  twoMonths.total),  pctVs2Months: null },
+        { ...current,    pctVsPrev: pctChange(current.total,    lastMonth.total),  pctVs2Months: pctChange(current.total, twoMonths.total) },
       ],
     });
   } catch (err) {

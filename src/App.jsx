@@ -776,28 +776,46 @@ export default function App() {
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:20}}>
                 {(costData?.history || []).map((m, i) => {
                   const isCurrentMonth = i === (costData.history.length - 1);
-                  const pct = m.pctVsPrev;
-                  const isHigher = pct > 0;
-                  const isLower  = pct < 0;
-                  const pctColor = isHigher ? C.red : isLower ? C.green : C.textMute;
-                  const pctBg    = isHigher ? "#fff5f5" : isLower ? C.greenBg : C.bg;
-                  const arrow    = isHigher ? "▲" : isLower ? "▼" : "—";
+                  const isLastMonth    = i === (costData.history.length - 2);
+                  const label = isCurrentMonth ? "THIS MONTH" : isLastMonth ? "LAST MONTH" : "2 MONTHS AGO";
+
+                  const renderBadge = (pct, label) => {
+                    if (pct === null || pct === undefined) return null;
+                    if (pct === "NEW") return (
+                      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"#fff5f5",borderRadius:6,padding:"4px 10px",marginBottom:4}}>
+                        <span style={{fontSize:12,fontWeight:700,color:C.red}}>NEW SPEND</span>
+                        <span style={{fontSize:11,color:C.textMute}}>{label}</span>
+                      </div>
+                    );
+                    if (pct === 0) return (
+                      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:C.bg,borderRadius:6,padding:"4px 10px",marginBottom:4}}>
+                        <span style={{fontSize:12,fontWeight:700,color:C.textMute}}>— 0%</span>
+                        <span style={{fontSize:11,color:C.textMute}}>{label}</span>
+                      </div>
+                    );
+                    const up = pct > 0;
+                    return (
+                      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:up?"#fff5f5":C.greenBg,borderRadius:6,padding:"4px 10px",marginBottom:4}}>
+                        <span style={{fontSize:13,color:up?C.red:C.green}}>{up?"▲":"▼"}</span>
+                        <span style={{fontSize:13,fontWeight:700,color:up?C.red:C.green,fontFamily:C.mono}}>{Math.abs(pct)}%</span>
+                        <span style={{fontSize:11,color:C.textMute}}>{up?"higher":"lower"} {label}</span>
+                      </div>
+                    );
+                  };
+
                   return (
                     <div key={m.month} style={{background:isCurrentMonth?C.primaryLight:C.surface,borderRadius:C.r,padding:"20px 24px",boxShadow:C.shadow,border:`1px solid ${isCurrentMonth?C.blueBdr:C.border}`}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                        <div style={{fontSize:11,color:C.textMute,fontWeight:600}}>{isCurrentMonth?"THIS MONTH":i===costData.history.length-2?"LAST MONTH":"2 MONTHS AGO"}</div>
+                        <div style={{fontSize:11,color:C.textMute,fontWeight:600}}>{label}</div>
                         {isCurrentMonth && <span style={{fontSize:9,background:C.primary,color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700}}>CURRENT</span>}
                       </div>
                       <div style={{fontSize:11,color:C.textMute,marginBottom:8}}>{m.month}</div>
                       <div style={{fontSize:36,fontWeight:900,color:C.text,fontFamily:C.mono,marginBottom:10}}>${m.total?.toLocaleString() ?? "0"}</div>
-                      {pct !== null
-                        ? <div style={{display:"inline-flex",alignItems:"center",gap:6,background:pctBg,borderRadius:6,padding:"4px 10px"}}>
-                            <span style={{fontSize:14,color:pctColor}}>{arrow}</span>
-                            <span style={{fontSize:13,fontWeight:700,color:pctColor,fontFamily:C.mono}}>{Math.abs(pct)}%</span>
-                            <span style={{fontSize:11,color:C.textMute}}>{isHigher?"higher":"lower"} than prev month</span>
-                          </div>
-                        : <div style={{fontSize:11,color:C.textMute}}>No previous month data</div>
-                      }
+                      <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                        {renderBadge(m.pctVsPrev,   isCurrentMonth ? "vs last month"   : isLastMonth ? "vs 2 months ago" : "")}
+                        {isCurrentMonth && renderBadge(m.pctVs2Months, "vs 2 months ago")}
+                        {m.pctVsPrev === null && !isCurrentMonth && <div style={{fontSize:11,color:C.textMute}}>No previous data</div>}
+                      </div>
                     </div>
                   );
                 })}
