@@ -448,6 +448,8 @@ export default function App() {
   const [aiTarget,     setAiTarget]     = useState(null);
   const [aiPerfTarget, setAiPerfTarget] = useState(null);
   const [alarms,       setAlarms]       = useState([]);
+  const [prevAlarms,   setPrevAlarms]   = useState(null); // track previous state for diff
+  const [notifEnabled, setNotifEnabled] = useState(false);
   const [perf,         setPerf]         = useState(null);
   const [costData,     setCostData]     = useState(null);
   const [canaryData,   setCanaryData]   = useState(null);
@@ -476,17 +478,57 @@ export default function App() {
     });
   }, []);
 
+  // Request browser notification permission on load
+  useEffect(() => {
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        setNotifEnabled(true);
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(p => setNotifEnabled(p === "granted"));
+      }
+    }
+  }, []);
+
+  // Fire browser notification for new ALARM state changes
+  const checkAndNotify = useCallback((newAlarms, oldAlarms) => {
+    if (!notifEnabled || oldAlarms === null) return;
+    const oldMap = Object.fromEntries(oldAlarms.map(a => [a.name, a.state]));
+    newAlarms.forEach(a => {
+      const wasOK    = !oldMap[a.name] || oldMap[a.name] !== "ALARM";
+      const isAlarm  = a.state === "ALARM";
+      const wasAlarm = oldMap[a.name] === "ALARM";
+      const isOK     = a.state === "OK";
+      if (wasOK && isAlarm) {
+        new Notification("🔴 CloudWatch ALARM", {
+          body: `${a.name}\n${a.metric} on ${a.resource} exceeded threshold ${a.threshold}`,
+          icon: "/Cloudwatchdashboard/favicon.svg",
+          tag:  a.name,
+        });
+      }
+      if (wasAlarm && isOK) {
+        new Notification("✅ CloudWatch RESOLVED", {
+          body: `${a.name} is back to OK`,
+          icon: "/Cloudwatchdashboard/favicon.svg",
+          tag:  a.name + "-ok",
+        });
+      }
+    });
+  }, [notifEnabled]);
+
   const loadAll = useCallback(() => {
     setLoadingAlarms(true);
     setLoadingPerf(true);
-    fetchRealAlarms().then(d => { setAlarms(d); setLoadingAlarms(false); });
+    fetchRealAlarms().then(d => {
+      setAlarms(prev => { checkAndNotify(d, prev === undefined ? null : prev); return d; });
+      setLoadingAlarms(false);
+    });
     fetchPerformance().then(d => { setPerf(d);  setLoadingPerf(false);  });
     loadCostIfStale();
     fetchCanary().then(d => { if (d && !d.error) setCanaryData(d); });
     fetchServices().then(d => { if (d) setServiceData(d); });
     fetchRdsPerf().then(d => { if (d && !d.error) setRdsPerf(d); });
     setLastRefresh(new Date());
-  }, [loadCostIfStale]);
+  }, [loadCostIfStale, checkAndNotify]);
 
   useEffect(() => {
     loadAll();
@@ -617,8 +659,20 @@ export default function App() {
             {(loadingAlarms||loadingPerf)?<span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>↻</span>:"↻"}
           </button>
           <div style={{position:"relative"}}>
-            <button style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:C.rSm,padding:"7px 10px",cursor:"pointer",fontSize:14,color:C.textSub}}>🔔</button>
+            <button
+              title={notifEnabled ? "Browser notifications ON — click to test" : "Browser notifications OFF — click to enable"}
+              onClick={() => {
+                if (!notifEnabled) {
+                  Notification.requestPermission().then(p => setNotifEnabled(p === "granted"));
+                } else {
+                  new Notification("🔔 eLit Dashboard", { body: "Notifications are working! You will be alerted when alarms fire.", icon: "/Cloudwatchdashboard/favicon.svg" });
+                }
+              }}
+              style={{background:notifEnabled?C.greenBg:C.bg,border:`1px solid ${notifEnabled?C.green:C.border}`,borderRadius:C.rSm,padding:"7px 10px",cursor:"pointer",fontSize:14,color:notifEnabled?C.green:C.textSub}}>
+              🔔
+            </button>
             {alarmCount>0&&<span style={{position:"absolute",top:-4,right:-4,background:C.red,color:"#fff",borderRadius:10,padding:"1px 5px",fontSize:9,fontWeight:700}}>{alarmCount}</span>}
+            {notifEnabled&&<span style={{position:"absolute",bottom:-4,right:-4,background:C.green,borderRadius:"50%",width:8,height:8,border:"2px solid white"}}/>}
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8,padding:"4px 10px 4px 4px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:30}}>
             <div style={{width:30,height:30,borderRadius:"50%",background:"linear-gradient(135deg,#4f6ef7,#7c3aed)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:700}}>JD</div>
