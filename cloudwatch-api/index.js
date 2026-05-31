@@ -250,7 +250,8 @@ app.get("/cost", async (req, res) => {
     const pctChange = (curr, prev) => {
       if (prev === null || prev === undefined) return null;
       if (prev === 0 && curr === 0) return 0;
-      if (prev === 0 && curr > 0) return "NEW"; // new spend appeared
+      if (prev === 0 && curr > 0) return 100; // 100% higher (went from nothing to something)
+      if (curr === 0 && prev > 0) return -100; // 100% lower (went from something to nothing)
       return +(((curr - prev) / prev) * 100).toFixed(1);
     };
 
