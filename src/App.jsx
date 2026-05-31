@@ -463,9 +463,9 @@ export default function App() {
   const loadCostIfStale = useCallback(() => {
     const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
     // Clear old cache format that doesn't have history
-    try { const c = JSON.parse(localStorage.getItem("costCache")); if (c?.data && !c.data.history) localStorage.removeItem("costCache"); } catch {}
+    try { const c = JSON.parse(localStorage.getItem("costCacheV2")); if (c?.data && !c.data.history) localStorage.removeItem("costCacheV2"); } catch {}
     try {
-      const cached = localStorage.getItem("costCache");
+      const cached = localStorage.getItem("costCacheV2");
       if (cached) {
         const { ts, data } = JSON.parse(cached);
         if (Date.now() - ts < SEVEN_DAYS) { setCostData(data); return; }
@@ -474,7 +474,7 @@ export default function App() {
     fetchCost().then(d => {
       if (d && !d.error) {
         setCostData(d);
-        localStorage.setItem("costCache", JSON.stringify({ ts: Date.now(), data: d }));
+        localStorage.setItem("costCacheV2", JSON.stringify({ ts: Date.now(), data: d }));
       }
     });
   }, []);
