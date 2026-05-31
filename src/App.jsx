@@ -782,18 +782,15 @@ export default function App() {
                   const monthName = (ym) => { const [y,mo] = ym.split("-"); return new Date(y, mo-1).toLocaleString("en-SG",{month:"short", year:"numeric"}); };
                   const label = isCurrentMonth ? "THIS MONTH" : isLastMonth ? "LAST MONTH" : "2 MONTHS AGO";
 
-                  // Build comparison lines
+                  // Build comparison lines — show for last month and current month
                   const compLines = [];
-                  if (isLastMonth && m.pctVsPrev !== null && m.pctVsPrev !== undefined) {
-                    const pct = m.pctVsPrev; const up = pct==="NEW"||pct>0;
-                    compLines.push({ pct, up, text: `vs ${monthName(h[i-1]?.month||"")}` });
-                  }
-                  if (isCurrentMonth) {
-                    if (m.pctVsPrev !== null && m.pctVsPrev !== undefined)
-                      compLines.push({ pct: m.pctVsPrev, up: m.pctVsPrev==="NEW"||m.pctVsPrev>0, text: `vs ${monthName(h[i-1]?.month||"")}` });
-                    if (m.pctVs2Months !== null && m.pctVs2Months !== undefined)
-                      compLines.push({ pct: m.pctVs2Months, up: m.pctVs2Months==="NEW"||m.pctVs2Months>0, text: `vs ${monthName(h[i-2]?.month||"")}` });
-                  }
+                  const addLine = (pct, prevMonth) => {
+                    if (pct === null || pct === undefined) return;
+                    compLines.push({ pct, up: pct==="NEW"||pct>0, text: `vs ${monthName(prevMonth)}` });
+                  };
+                  if (isLastMonth)    addLine(m.pctVsPrev,    h[0]?.month);
+                  if (isCurrentMonth) addLine(m.pctVsPrev,    h[1]?.month);
+                  if (isCurrentMonth) addLine(m.pctVs2Months, h[0]?.month);
 
                   return (
                     <div key={m.month} style={{background:isCurrentMonth?C.primaryLight:C.surface,borderRadius:C.r,padding:"20px 24px",boxShadow:C.shadow,border:`1px solid ${isCurrentMonth?C.blueBdr:C.border}`}}>
@@ -804,7 +801,8 @@ export default function App() {
                       <div style={{fontSize:12,color:C.textMute,marginBottom:10}}>{monthName(m.month)}</div>
                       <div style={{fontSize:34,fontWeight:900,color:C.text,fontFamily:C.mono,marginBottom:12}}>${m.total?.toLocaleString() ?? "0"}</div>
                       <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                        {compLines.length === 0 && <div style={{fontSize:11,color:C.textMute,fontStyle:"italic"}}>No comparison data</div>}
+                        {compLines.length === 0 && i === 0 && <div style={{fontSize:11,color:C.textMute,fontStyle:"italic"}}>No previous data</div>}
+                        {compLines.length === 0 && i > 0 && <div style={{fontSize:11,color:C.textMute,fontStyle:"italic"}}>Same as previous ($0)</div>}
                         {compLines.map((c, ci) => {
                           if (c.pct === "NEW") return (
                             <div key={ci} style={{display:"flex",alignItems:"center",gap:6,background:"#fff5f5",borderRadius:6,padding:"5px 10px"}}>
