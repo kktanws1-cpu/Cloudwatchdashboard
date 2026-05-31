@@ -803,12 +803,13 @@ export default function App() {
                       <div style={{display:"flex",flexDirection:"column",gap:6}}>
                         {compLines.length === 0 && <div style={{fontSize:11,color:C.textMute,fontStyle:"italic"}}>No previous data</div>}
                         {compLines.map((c, ci) => {
-                          const isUp   = c.pct === "NEW" || c.pct > 0;
+                          const isNew  = c.pct === "NEW";
+                          const isUp   = isNew || c.pct > 0;
                           const isDown = c.pct < 0;
-                          const pctLabel = c.pct === "NEW" ? "NEW" : c.pct === 0 ? "0%" : `${Math.abs(c.pct)}%`;
-                          const dirLabel = c.pct === "NEW" ? "higher" : c.pct === 0 ? "same" : isUp ? "higher" : "lower";
-                          const bg    = isDown ? C.greenBg : c.pct === 0 ? C.bg : "#fff5f5";
-                          const color = isDown ? C.green   : c.pct === 0 ? C.textMute : C.red;
+                          const pctLabel = isNew ? "NEW" : c.pct === 0 ? "0%" : `${Math.abs(c.pct)}%`;
+                          const dirLabel = isNew ? "— no previous spend" : c.pct === 0 ? "same" : isUp ? "higher" : "lower";
+                          const bg    = isDown ? C.greenBg : c.pct === 0 ? C.bg : isNew ? C.amberBg : "#fff5f5";
+                          const color = isDown ? C.green   : c.pct === 0 ? C.textMute : isNew ? C.amber : C.red;
                           const arrow = isDown ? "▼" : c.pct === 0 ? "—" : "▲";
                           return (
                             <div key={ci} style={{display:"flex",alignItems:"center",gap:6,background:bg,borderRadius:6,padding:"5px 10px"}}>
