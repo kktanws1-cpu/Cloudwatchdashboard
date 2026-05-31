@@ -200,39 +200,62 @@ app.get("/performance", async (req, res) => {
   }
 });
 
-// ── GET /cost — real AWS Cost Explorer data for current month ─────────────────
+// ── GET /cost — real AWS Cost Explorer data with last 2 months comparison ────
 app.get("/cost", async (req, res) => {
-  const now   = new Date();
-  const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-  const end   = now.toISOString().slice(0, 10);
+  const now = new Date();
+
+  // Helper to get month boundaries
+  const monthStart = (offset = 0) => {
+    const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  };
+  const monthEnd = (offset = 0) => {
+    const d = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
+    const end = new Date(Math.min(d, now));
+    return end.toISOString().slice(0, 10);
+  };
 
   try {
-    // Total cost grouped by service
-    const cmd = new GetCostAndUsageCommand({
-      TimePeriod:  { Start: start, End: end },
+    // Fetch current month, last month and month before — all in one API call
+    const histCmd = new GetCostAndUsageCommand({
+      TimePeriod:  { Start: monthStart(-2), End: monthEnd(0) },
       Granularity: "MONTHLY",
       Metrics:     ["UnblendedCost"],
       GroupBy:     [{ Type: "DIMENSION", Key: "SERVICE" }],
     });
-    const resp = await ceClient.send(cmd);
-    const results = resp.ResultsByTime?.[0];
+    const histResp = await ceClient.send(histCmd);
+    const months = histResp.ResultsByTime || [];
 
-    if (!results) return res.json({ total: 0, services: [], trend: [] });
+    const parseMonth = (data) => {
+      if (!data) return { total: 0, services: [], month: "" };
+      const services = (data.Groups || [])
+        .map(g => ({
+          name:   g.Keys[0].replace("Amazon ", "").replace("AWS ", ""),
+          amount: +parseFloat(g.Metrics.UnblendedCost.Amount).toFixed(2),
+        }))
+        .filter(s => s.amount > 0)
+        .sort((a, b) => b.amount - a.amount);
+      return {
+        total:    +services.reduce((s, v) => s + v.amount, 0).toFixed(2),
+        services,
+        month:    data.TimePeriod.Start.slice(0, 7),
+      };
+    };
 
-    const services = results.Groups
-      .map(g => ({
-        name:   g.Keys[0].replace("Amazon ", "").replace("AWS ", ""),
-        amount: +parseFloat(g.Metrics.UnblendedCost.Amount).toFixed(2),
-      }))
-      .filter(s => s.amount > 0)
-      .sort((a, b) => b.amount - a.amount);
+    const current  = parseMonth(months[months.length - 1]);
+    const lastMonth = parseMonth(months[months.length - 2]);
+    const twoMonths = parseMonth(months[months.length - 3]);
 
-    const total = +services.reduce((s, v) => s + v.amount, 0).toFixed(2);
+    // % change helper
+    const pctChange = (curr, prev) => {
+      if (!prev || prev === 0) return null;
+      return +(((curr - prev) / prev) * 100).toFixed(1);
+    };
 
     // Daily trend for sparkline (last 30 days)
     const trendStart = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const trendCmd = new GetCostAndUsageCommand({
-      TimePeriod:  { Start: trendStart, End: end },
+      TimePeriod:  { Start: trendStart, End: now.toISOString().slice(0, 10) },
       Granularity: "DAILY",
       Metrics:     ["UnblendedCost"],
     });
@@ -241,7 +264,17 @@ app.get("/cost", async (req, res) => {
       +parseFloat(r.Total.UnblendedCost.Amount).toFixed(2)
     );
 
-    res.json({ total, services, trend, month: start.slice(0, 7) });
+    res.json({
+      total:    current.total,
+      services: current.services,
+      trend,
+      month:    current.month,
+      history: [
+        { ...twoMonths,  pctVsPrev: pctChange(twoMonths.total,  null) },
+        { ...lastMonth,  pctVsPrev: pctChange(lastMonth.total,  twoMonths.total) },
+        { ...current,    pctVsPrev: pctChange(current.total,    lastMonth.total) },
+      ],
+    });
   } catch (err) {
     console.error("Cost Explorer error:", err.message);
     res.status(500).json({ error: err.message });

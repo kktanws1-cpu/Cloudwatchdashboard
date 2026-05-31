@@ -462,6 +462,8 @@ export default function App() {
 
   const loadCostIfStale = useCallback(() => {
     const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+    // Clear old cache format that doesn't have history
+    try { const c = JSON.parse(localStorage.getItem("costCache")); if (c?.data && !c.data.history) localStorage.removeItem("costCache"); } catch {}
     try {
       const cached = localStorage.getItem("costCache");
       if (cached) {
@@ -768,11 +770,44 @@ export default function App() {
 
           {activeNav==="cost" && (
             <div>
-              <div style={{fontSize:20,fontWeight:800,color:C.text,marginBottom:18}}>Cost Management {costData?.month ? `— ${costData.month}` : ""}</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:20}}>
+              <div style={{fontSize:20,fontWeight:800,color:C.text,marginBottom:18}}>Cost Management</div>
+
+              {/* ── 3-month comparison cards ── */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:20}}>
+                {(costData?.history || []).map((m, i) => {
+                  const isCurrentMonth = i === (costData.history.length - 1);
+                  const pct = m.pctVsPrev;
+                  const isHigher = pct > 0;
+                  const isLower  = pct < 0;
+                  const pctColor = isHigher ? C.red : isLower ? C.green : C.textMute;
+                  const pctBg    = isHigher ? "#fff5f5" : isLower ? C.greenBg : C.bg;
+                  const arrow    = isHigher ? "▲" : isLower ? "▼" : "—";
+                  return (
+                    <div key={m.month} style={{background:isCurrentMonth?C.primaryLight:C.surface,borderRadius:C.r,padding:"20px 24px",boxShadow:C.shadow,border:`1px solid ${isCurrentMonth?C.blueBdr:C.border}`}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                        <div style={{fontSize:11,color:C.textMute,fontWeight:600}}>{isCurrentMonth?"THIS MONTH":i===costData.history.length-2?"LAST MONTH":"2 MONTHS AGO"}</div>
+                        {isCurrentMonth && <span style={{fontSize:9,background:C.primary,color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700}}>CURRENT</span>}
+                      </div>
+                      <div style={{fontSize:11,color:C.textMute,marginBottom:8}}>{m.month}</div>
+                      <div style={{fontSize:36,fontWeight:900,color:C.text,fontFamily:C.mono,marginBottom:10}}>${m.total?.toLocaleString() ?? "0"}</div>
+                      {pct !== null
+                        ? <div style={{display:"inline-flex",alignItems:"center",gap:6,background:pctBg,borderRadius:6,padding:"4px 10px"}}>
+                            <span style={{fontSize:14,color:pctColor}}>{arrow}</span>
+                            <span style={{fontSize:13,fontWeight:700,color:pctColor,fontFamily:C.mono}}>{Math.abs(pct)}%</span>
+                            <span style={{fontSize:11,color:C.textMute}}>{isHigher?"higher":"lower"} than prev month</span>
+                          </div>
+                        : <div style={{fontSize:11,color:C.textMute}}>No previous month data</div>
+                      }
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── Service breakdown + donut ── */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:20,marginBottom:20}}>
                 <div style={{background:C.surface,borderRadius:C.r,padding:"24px",boxShadow:C.shadow,border:`1px solid ${C.border}`}}>
-                  <div style={{fontSize:12,color:C.textSub,marginBottom:4}}>Total This Month</div>
-                  <div style={{fontSize:42,fontWeight:900,color:C.text,fontFamily:C.mono,marginBottom:16}}>${costData?.total?.toLocaleString()??0}</div>
+                  <div style={{fontSize:12,color:C.textSub,marginBottom:4}}>This Month Total</div>
+                  <div style={{fontSize:36,fontWeight:900,color:C.text,fontFamily:C.mono,marginBottom:16}}>${costData?.total?.toLocaleString()??0}</div>
                   <Donut segments={costDonut} size={120} thickness={18} label={`$${costData?.total??0}`} sublabel="Total"/>
                 </div>
                 <div style={{background:C.surface,borderRadius:C.r,padding:"24px",boxShadow:C.shadow,border:`1px solid ${C.border}`}}>
@@ -788,7 +823,9 @@ export default function App() {
                   ))}
                 </div>
               </div>
-              <div style={{background:C.surface,borderRadius:C.r,padding:"18px 20px",boxShadow:C.shadow,border:`1px solid ${C.border}`,marginTop:20}}>
+
+              {/* ── Daily trend ── */}
+              <div style={{background:C.surface,borderRadius:C.r,padding:"18px 20px",boxShadow:C.shadow,border:`1px solid ${C.border}`}}>
                 <SectionHeader title="Daily Spend Trend (Last 30 Days)"/>
                 <Spark data={costLine} color={C.primary} w={900} h={60}/>
               </div>
