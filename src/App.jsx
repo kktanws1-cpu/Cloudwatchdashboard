@@ -801,25 +801,19 @@ export default function App() {
                       <div style={{fontSize:12,color:C.textMute,marginBottom:10}}>{monthName(m.month)}</div>
                       <div style={{fontSize:34,fontWeight:900,color:C.text,fontFamily:C.mono,marginBottom:12}}>${m.total?.toLocaleString() ?? "0"}</div>
                       <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                        {compLines.length === 0 && i === 0 && <div style={{fontSize:11,color:C.textMute,fontStyle:"italic"}}>No previous data</div>}
-                        {compLines.length === 0 && i > 0 && <div style={{fontSize:11,color:C.textMute,fontStyle:"italic"}}>Same as previous ($0)</div>}
+                        {compLines.length === 0 && <div style={{fontSize:11,color:C.textMute,fontStyle:"italic"}}>No previous data</div>}
                         {compLines.map((c, ci) => {
-                          if (c.pct === "NEW") return (
-                            <div key={ci} style={{display:"flex",alignItems:"center",gap:6,background:"#fff5f5",borderRadius:6,padding:"5px 10px"}}>
-                              <span style={{fontSize:12,fontWeight:800,color:C.red}}>NEW</span>
-                              <span style={{fontSize:11,color:C.textMute}}>first spend {c.text}</span>
-                            </div>
-                          );
-                          if (c.pct === 0) return (
-                            <div key={ci} style={{display:"flex",alignItems:"center",gap:6,background:C.bg,borderRadius:6,padding:"5px 10px"}}>
-                              <span style={{fontSize:12,fontWeight:700,color:C.textMute}}>— same</span>
-                              <span style={{fontSize:11,color:C.textMute}}>{c.text}</span>
-                            </div>
-                          );
+                          const isUp   = c.pct === "NEW" || c.pct > 0;
+                          const isDown = c.pct < 0;
+                          const pctLabel = c.pct === "NEW" ? "NEW" : c.pct === 0 ? "0%" : `${Math.abs(c.pct)}%`;
+                          const dirLabel = c.pct === "NEW" ? "higher" : c.pct === 0 ? "same" : isUp ? "higher" : "lower";
+                          const bg    = isDown ? C.greenBg : c.pct === 0 ? C.bg : "#fff5f5";
+                          const color = isDown ? C.green   : c.pct === 0 ? C.textMute : C.red;
+                          const arrow = isDown ? "▼" : c.pct === 0 ? "—" : "▲";
                           return (
-                            <div key={ci} style={{display:"flex",alignItems:"center",gap:6,background:c.up?"#fff5f5":C.greenBg,borderRadius:6,padding:"5px 10px"}}>
-                              <span style={{fontSize:14,fontWeight:700,color:c.up?C.red:C.green}}>{c.up?"▲":"▼"} {Math.abs(c.pct)}%</span>
-                              <span style={{fontSize:11,color:C.textMute}}>{c.up?"higher":"lower"} {c.text}</span>
+                            <div key={ci} style={{display:"flex",alignItems:"center",gap:6,background:bg,borderRadius:6,padding:"5px 10px"}}>
+                              <span style={{fontSize:13,fontWeight:800,color,fontFamily:C.mono}}>{arrow} {pctLabel} {dirLabel}</span>
+                              <span style={{fontSize:11,color:C.textMute}}>{c.text}</span>
                             </div>
                           );
                         })}
