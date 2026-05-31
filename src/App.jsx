@@ -22,7 +22,7 @@ const C = {
 /* â”€â”€ API Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 async function fetchRealAlarms() {
   try {
-    const res  = await fetch("http://47.129.171.222:3001/alarms");
+    const res  = await fetch("https://47.129.171.222.nip.io/alarms");
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch { return []; }
@@ -30,7 +30,7 @@ async function fetchRealAlarms() {
 
 async function fetchPerformance() {
   try {
-    const res  = await fetch("http://47.129.171.222:3001/performance");
+    const res  = await fetch("https://47.129.171.222.nip.io/performance");
     const data = await res.json();
     return data;
   } catch { return null; }
@@ -38,7 +38,7 @@ async function fetchPerformance() {
 
 async function fetchCost() {
   try {
-    const res  = await fetch("http://47.129.171.222:3001/cost");
+    const res  = await fetch("https://47.129.171.222.nip.io/cost");
     const data = await res.json();
     return data;
   } catch { return null; }
@@ -46,7 +46,7 @@ async function fetchCost() {
 
 async function fetchCanary() {
   try {
-    const res  = await fetch("http://47.129.171.222:3001/canary");
+    const res  = await fetch("https://47.129.171.222.nip.io/canary");
     const data = await res.json();
     return data;
   } catch { return null; }
@@ -54,7 +54,7 @@ async function fetchCanary() {
 
 async function fetchServices() {
   try {
-    const res  = await fetch("http://47.129.171.222:3001/services");
+    const res  = await fetch("https://47.129.171.222.nip.io/services");
     const data = await res.json();
     return data;
   } catch { return null; }
@@ -62,7 +62,7 @@ async function fetchServices() {
 
 async function fetchRdsPerf() {
   try {
-    const res  = await fetch("http://47.129.171.222:3001/rds-performance");
+    const res  = await fetch("https://47.129.171.222.nip.io/rds-performance");
     const data = await res.json();
     return data;
   } catch { return null; }
@@ -639,7 +639,7 @@ export default function App() {
         )}
         {!loadingAlarms&&alarms.length===0&&(
           <div style={{background:C.amberBg,borderBottom:`1px solid ${C.amberBdr}`,padding:"10px 24px",fontSize:12,color:C.amber,fontWeight:600}}>
-            âš  No alarms found. Make sure the backend is running at http://47.129.171.222:3001
+            âš  No alarms found. Make sure the backend is running at https://47.129.171.222.nip.io
           </div>
         )}
 
@@ -1131,4 +1131,5 @@ export default function App() {
     </div>
   );
 }
+
 
