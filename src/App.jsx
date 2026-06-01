@@ -481,15 +481,21 @@ export default function App() {
   // Request browser notification permission on load
   useEffect(() => {
     const check = () => {
-      if (!("Notification" in window)) return;
+      if (!("Notification" in window)) { console.log("Notifications not supported"); return; }
+      console.log("Notification.permission =", Notification.permission);
       if (Notification.permission === "granted") {
         setNotifEnabled(true);
+        console.log("Notifications enabled!");
       } else if (Notification.permission === "default") {
-        Notification.requestPermission().then(p => { if (p === "granted") setNotifEnabled(true); });
+        Notification.requestPermission().then(p => {
+          console.log("Permission result:", p);
+          if (p === "granted") setNotifEnabled(true);
+        });
+      } else {
+        console.log("Notifications blocked by browser");
       }
     };
     check();
-    // re-check after 2s in case permission was just granted in settings
     const t = setTimeout(check, 2000);
     return () => clearTimeout(t);
   }, []);
