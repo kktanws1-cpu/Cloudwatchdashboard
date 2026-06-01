@@ -480,13 +480,18 @@ export default function App() {
 
   // Request browser notification permission on load
   useEffect(() => {
-    if ("Notification" in window) {
+    const check = () => {
+      if (!("Notification" in window)) return;
       if (Notification.permission === "granted") {
         setNotifEnabled(true);
-      } else if (Notification.permission !== "denied") {
-        Notification.requestPermission().then(p => setNotifEnabled(p === "granted"));
+      } else if (Notification.permission === "default") {
+        Notification.requestPermission().then(p => { if (p === "granted") setNotifEnabled(true); });
       }
-    }
+    };
+    check();
+    // re-check after 2s in case permission was just granted in settings
+    const t = setTimeout(check, 2000);
+    return () => clearTimeout(t);
   }, []);
 
   // Fire browser notification for new ALARM state changes
@@ -683,6 +688,16 @@ export default function App() {
           </div>
         </div>
 
+        {/* Notification permission banner */}
+        {"Notification" in window && Notification.permission !== "granted" && (
+          <div style={{background:"#fffbeb",borderBottom:"1px solid #f59e0b44",padding:"8px 24px",fontSize:12,color:"#92400e",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span>🔔 Enable browser notifications to get instant alerts when alarms fire</span>
+            <button onClick={()=>Notification.requestPermission().then(p=>{if(p==="granted")setNotifEnabled(true);})}
+              style={{background:"#f59e0b",color:"#fff",border:"none",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontSize:11,fontWeight:700}}>
+              Enable Now
+            </button>
+          </div>
+        )}
         {/* Loading / empty banners */}
         {(loadingAlarms||loadingPerf)&&(
           <div style={{background:C.primaryLight,borderBottom:`1px solid ${C.blueBdr}`,padding:"8px 24px",fontSize:12,color:C.primary,display:"flex",alignItems:"center",gap:8}}>
