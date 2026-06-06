@@ -4,9 +4,38 @@ import requests
 
 TIKTOK_API = "https://open.tiktokapis.com/v2"
 
+# Holds the access token in memory after refresh (so we don't rely on env only)
+_ACCESS_TOKEN = {"value": os.environ.get("TIKTOK_ACCESS_TOKEN")}
+
+
+def refresh_access_token():
+    """Use the refresh token to get a fresh access token.
+    Returns (access_token, new_refresh_token). Raises on failure."""
+    client_key = os.environ["TIKTOK_CLIENT_KEY"]
+    client_secret = os.environ["TIKTOK_CLIENT_SECRET"]
+    refresh_token = os.environ["TIKTOK_REFRESH_TOKEN"]
+
+    resp = requests.post(
+        f"{TIKTOK_API}/oauth/token/",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        data={
+            "client_key": client_key,
+            "client_secret": client_secret,
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+        },
+    )
+    data = resp.json()
+    if "access_token" not in data:
+        raise RuntimeError(f"TikTok token refresh failed: {data}")
+
+    _ACCESS_TOKEN["value"] = data["access_token"]
+    new_refresh = data.get("refresh_token", refresh_token)
+    return data["access_token"], new_refresh
+
 
 def _headers():
-    token = os.environ["TIKTOK_ACCESS_TOKEN"]
+    token = _ACCESS_TOKEN["value"] or os.environ.get("TIKTOK_ACCESS_TOKEN")
     return {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json; charset=UTF-8",
