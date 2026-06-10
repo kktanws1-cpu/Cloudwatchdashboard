@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Single EC2 instance running Mailpit (fake SMTP server + web UI) for
+  capturing test emails. The web UI is served on port 8025 and the SMTP
+  listener on port 1025. Instance management is via AWS Systems Manager
+  Session Manager, so no SSH key pair or open port 22 is required.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC to launch the Mailpit instance into (must have an Internet Gateway).
+
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public subnet (with a route to an Internet Gateway) to launch the instance into.
+
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t2.micro
+    Description: EC2 instance size. t3.micro is sufficient for Mailpit.
+
+  AllowedCidr:
+    Type: String
+    Description: >
+      CIDR block allowed to reach the Mailpit web UI (8025) and SMTP port (1025),
+      e.g. 203.0.113.4/32 for a single IP.
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+
+  VolumeSize:
+    Type: Number
+    Default: 8
+    Description: Root EBS volume size in GB (used to persist captured emails).
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+Resources:
+  MailpitSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access to the Mailpit web UI and SMTP port
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8025
+          ToPort: 8025
+          CidrIp: !Ref AllowedCidr
+          Description: Mailpit web UI
+        - IpProtocol: tcp
+          FromPort: 1025
+          ToPort: 1025
+          CidrIp: !Ref AllowedCidr
+          Description: SMTP test traffic
+      Tags:
+        - Key: Name
+          Value: mailpit-sg
+
+  MailpitInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  MailpitInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref MailpitInstanceRole
+
+  MailpitInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestAmiId
+      SubnetId: !Ref SubnetId
+      IamInstanceProfile: !Ref MailpitInstanceProfile
+      SecurityGroupIds:
+        - !Ref MailpitSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: !Ref VolumeSize
+            VolumeType: gp3
+            DeleteOnTermination: true
+      Tags:
+        - Key: Name
+          Value: mailpit
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          set -eux
+          dnf update -y
+          dnf install -y docker
+          systemctl enable --now docker
+          mkdir -p /opt/mailpit/data
+          docker run -d \
+            --name mailpit \
+            --restart unless-stopped \
+            -p 8025:8025 \
+            -p 1025:1025 \
+            -v /opt/mailpit/data:/data \
+            -e MP_DATABASE=/data/mailpit.db \
+            axllent/mailpit:latest
+
+  MailpitEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref MailpitInstance
+      Tags:
+        - Key: Name
+          Value: mailpit
+
+Outputs:
+  MailpitWebUI:
+    Description: Mailpit web UI URL
+    Value: !Sub 'http://${MailpitEip}:8025'
+
+  SmtpEndpoint:
+    Description: SMTP endpoint for sending test emails (no authentication required)
+    Value: !Sub '${MailpitEip}:1025'
+
+  InstanceId:
+    Description: EC2 instance ID
+    Value: !Ref MailpitInstance
+
+  SsmConnectCommand:
+    Description: Command to open a shell on the instance via Session Manager
+    Value: !Sub 'aws ssm start-session --target ${MailpitInstance}'
