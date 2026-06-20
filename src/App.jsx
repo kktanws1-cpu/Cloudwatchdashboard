@@ -68,6 +68,21 @@ async function fetchRdsPerf() {
   } catch { return null; }
 }
 
+async function fetchS3Growth() {
+  try {
+    const res  = await fetch("https://54.251.122.0.nip.io/s3-growth");
+    const data = await res.json();
+    return data;
+  } catch { return null; }
+}
+
+async function takeS3Snapshot() {
+  try {
+    const res  = await fetch("https://54.251.122.0.nip.io/s3-snapshot", { method: "POST" });
+    return await res.json();
+  } catch { return null; }
+}
+
 /* ── Nav ─────────────────────────────────────────────────────────────────── */
 const NAV = [
   { id:"overview",    icon:"⊞",  label:"Overview"          },
@@ -75,6 +90,7 @@ const NAV = [
   { id:"services",    icon:"⊡",  label:"Services"           },
   { id:"performance", icon:"📈", label:"Performance"        },
   { id:"canary",      icon:"🐦", label:"Canary Monitoring"  },
+  { id:"storage",     icon:"📦", label:"S3 Storage"         },
   { id:"cost",        icon:"💰", label:"Cost Management"    },
   { id:"settings",    icon:"⚙",  label:"Settings"           },
 ];
@@ -455,6 +471,8 @@ export default function App() {
   const [canaryData,   setCanaryData]   = useState(null);
   const [serviceData,  setServiceData]  = useState(null);
   const [rdsPerf,      setRdsPerf]      = useState(null);
+  const [s3Growth,     setS3Growth]     = useState(null);
+  const [snapshotting, setSnapshotting] = useState(false);
   const [loadingAlarms,setLoadingAlarms]= useState(true);
   const [loadingPerf,  setLoadingPerf]  = useState(true);
   const [lastRefresh,  setLastRefresh]  = useState(null);
@@ -538,6 +556,7 @@ export default function App() {
     fetchCanary().then(d => { if (d && !d.error) setCanaryData(d); });
     fetchServices().then(d => { if (d) setServiceData(d); });
     fetchRdsPerf().then(d => { if (d && !d.error) setRdsPerf(d); });
+    fetchS3Growth().then(d => { if (d && !d.error) setS3Growth(d); });
     setLastRefresh(new Date());
   }, [loadCostIfStale, checkAndNotify]);
 
@@ -837,6 +856,134 @@ export default function App() {
                   </div>
                 ))
               }
+            </div>
+          )}
+
+          {activeNav==="storage" && (
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+                <div>
+                  <div style={{fontSize:20,fontWeight:800,color:C.text}}>S3 Storage Monitoring</div>
+                  <div style={{fontSize:12,color:C.textMute,marginTop:4}}>
+                    Weekly growth tracking · Alert threshold: {s3Growth?.threshold ?? 5}% · Slack notifications enabled
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    setSnapshotting(true);
+                    const r = await takeS3Snapshot();
+                    if (r?.ok) {
+                      alert(`✅ Snapshot saved\nBuckets: ${r.bucketsCount}\nAlerts: ${r.alertsCount}`);
+                      fetchS3Growth().then(d => { if (d && !d.error) setS3Growth(d); });
+                    } else {
+                      alert("Snapshot failed");
+                    }
+                    setSnapshotting(false);
+                  }}
+                  disabled={snapshotting}
+                  style={{background:C.primary,border:"none",borderRadius:C.rSm,color:"#fff",padding:"10px 18px",cursor:snapshotting?"wait":"pointer",fontSize:13,fontWeight:700,opacity:snapshotting?0.6:1}}>
+                  {snapshotting ? "Taking snapshot..." : "📸 Take Snapshot Now"}
+                </button>
+              </div>
+
+              {/* Snapshot info banner */}
+              {s3Growth && (
+                <div style={{background:C.surface,borderRadius:C.r,padding:"14px 20px",border:`1px solid ${C.border}`,marginBottom:18,display:"flex",justifyContent:"space-between",fontSize:12}}>
+                  <div>
+                    <span style={{color:C.textMute}}>Last snapshot:</span>{" "}
+                    <span style={{color:C.text,fontWeight:600}}>
+                      {s3Growth.lastSnapshotDate ? new Date(s3Growth.lastSnapshotDate).toLocaleString("en-SG") : "No snapshot yet"}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{color:C.textMute}}>Previous snapshot:</span>{" "}
+                    <span style={{color:C.text,fontWeight:600}}>
+                      {s3Growth.prevSnapshotDate ? new Date(s3Growth.prevSnapshotDate).toLocaleString("en-SG") : "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{color:C.textMute}}>Auto-snapshot:</span>{" "}
+                    <span style={{color:C.green,fontWeight:600}}>Every Monday 9:00 AM</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Summary cards */}
+              {s3Growth?.buckets?.length > 0 && (
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:18}}>
+                  {[
+                    { label:"TOTAL BUCKETS", val: s3Growth.buckets.length, color: C.primary },
+                    { label:"TOTAL SIZE", val: `${(s3Growth.buckets.reduce((s,b)=>s+b.sizeBytes,0) / 1024 / 1024 / 1024).toFixed(2)} GB`, color: C.blue },
+                    { label:"ALERTS (>5%)", val: s3Growth.buckets.filter(b=>b.alert).length, color: s3Growth.buckets.some(b=>b.alert) ? C.red : C.green },
+                    { label:"NEW BUCKETS", val: s3Growth.buckets.filter(b=>b.pctChange==="NEW").length, color: C.amber },
+                  ].map(k => (
+                    <div key={k.label} style={{background:C.surface,borderRadius:C.r,padding:"18px 20px",border:`1px solid ${C.border}`,boxShadow:C.shadow}}>
+                      <div style={{fontSize:10,color:C.textMute,fontWeight:700,letterSpacing:"0.06em",marginBottom:6}}>{k.label}</div>
+                      <div style={{fontSize:28,fontWeight:900,color:k.color,fontFamily:C.mono}}>{k.val}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Buckets table */}
+              <div style={{background:C.surface,borderRadius:C.r,padding:"18px 20px",boxShadow:C.shadow,border:`1px solid ${C.border}`}}>
+                <SectionHeader title={`S3 Buckets (${s3Growth?.buckets?.length ?? 0})`}/>
+                {!s3Growth ? (
+                  <div style={{textAlign:"center",padding:"30px",color:C.textMute,fontSize:12}}>Loading S3 data...</div>
+                ) : (
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                    <thead>
+                      <tr style={{borderBottom:`2px solid ${C.border}`}}>
+                        {["S/N","BUCKET NAME","REGION","THIS WEEK","LAST WEEK","CHANGE","STATUS"].map(h =>
+                          <th key={h} style={{textAlign:"left",padding:"10px",color:C.textMute,fontWeight:700,fontSize:10,letterSpacing:"0.06em"}}>{h}</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {s3Growth.buckets.map((b, i) => {
+                        const isNew    = b.pctChange === "NEW";
+                        const isAlert  = b.alert;
+                        const isUp     = typeof b.pctChange === "number" && b.pctChange > 0;
+                        const isDown   = typeof b.pctChange === "number" && b.pctChange < 0;
+                        const changeColor = isAlert ? C.red : isUp ? C.amber : isDown ? C.green : C.textMute;
+                        const changeText  = b.pctChange === null ? "—" : isNew ? "NEW" : `${isUp?"▲":isDown?"▼":"—"} ${Math.abs(b.pctChange).toFixed(2)}%`;
+                        return (
+                          <tr key={b.name} style={{borderBottom:`1px solid ${C.borderSoft}`,background:isAlert?"#fff5f5":"transparent"}}>
+                            <td style={{padding:"10px",color:C.textMute,fontFamily:C.mono}}>{i+1}</td>
+                            <td style={{padding:"10px",fontWeight:700,color:C.text,fontFamily:C.mono,fontSize:11}}>{b.name}</td>
+                            <td style={{padding:"10px",color:C.textSub,fontSize:11}}>{b.region}</td>
+                            <td style={{padding:"10px",fontFamily:C.mono,fontWeight:600,color:C.text}}>
+                              {b.sizeGB >= 1 ? `${b.sizeGB} GB` : `${b.sizeMB} MB`}
+                            </td>
+                            <td style={{padding:"10px",fontFamily:C.mono,color:C.textSub}}>
+                              {b.lastWeekMB === null ? "—" : b.lastWeekMB >= 1024 ? `${(b.lastWeekMB/1024).toFixed(2)} GB` : `${b.lastWeekMB} MB`}
+                            </td>
+                            <td style={{padding:"10px",fontFamily:C.mono,fontWeight:700,color:changeColor}}>{changeText}</td>
+                            <td style={{padding:"10px"}}>
+                              {isAlert ? (
+                                <span style={{background:"#fff5f5",color:C.red,padding:"3px 10px",borderRadius:6,fontWeight:700,fontSize:11}}>🚨 ALERT</span>
+                              ) : isNew ? (
+                                <span style={{background:C.amberBg,color:C.amber,padding:"3px 10px",borderRadius:6,fontWeight:700,fontSize:11}}>NEW</span>
+                              ) : (
+                                <span style={{background:C.greenBg,color:C.green,padding:"3px 10px",borderRadius:6,fontWeight:700,fontSize:11}}>✓ OK</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Info footer */}
+              <div style={{marginTop:18,padding:"14px 18px",background:C.bg,borderRadius:C.r,border:`1px solid ${C.border}`,fontSize:11,color:C.textSub,lineHeight:1.7}}>
+                <strong style={{color:C.text}}>How it works:</strong><br/>
+                • S3 bucket sizes are pulled from CloudWatch (BucketSizeBytes metric, updated daily by AWS).<br/>
+                • A snapshot is taken every <strong>Monday at 9:00 AM SGT</strong>, comparing with the previous week.<br/>
+                • If any bucket grows more than <strong>{s3Growth?.threshold ?? 5}%</strong>, a Slack alert is sent automatically.<br/>
+                • Click <strong>"Take Snapshot Now"</strong> to manually trigger a comparison and alert.
+              </div>
             </div>
           )}
 

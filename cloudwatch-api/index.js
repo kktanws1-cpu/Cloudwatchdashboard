@@ -21,6 +21,14 @@ const {
   DescribeDBInstancesCommand,
   DescribeDBClustersCommand,
 } = require("@aws-sdk/client-rds");
+const {
+  S3Client,
+  ListBucketsCommand,
+  GetBucketLocationCommand,
+} = require("@aws-sdk/client-s3");
+const fs   = require("fs");
+const path = require("path");
+const https = require("https");
 
 const app    = express();
 const client = new CloudWatchClient({ region: "ap-southeast-1" });
@@ -28,6 +36,95 @@ const client = new CloudWatchClient({ region: "ap-southeast-1" });
 const ceClient  = new CostExplorerClient({ region: "us-east-1" });
 const synClient = new SyntheticsClient({ region: "ap-southeast-1" });
 const rdsClient = new RDSClient({ region: "ap-southeast-1" });
+const s3Client  = new S3Client({ region: "ap-southeast-1" });
+
+// ── S3 snapshot storage ─────────────────────────────────────────────
+const SNAPSHOT_FILE = path.join(__dirname, "s3-snapshots.json");
+// Slack webhook URL is loaded from environment variable for security
+// On EC2: stored in /etc/cloudwatch-api.env which is loaded by systemd
+const SLACK_WEBHOOK = process.env.SLACK_WEBHOOK || "";
+const GROWTH_THRESHOLD_PCT = 5; // alert when growth > 5% week over week
+
+function loadSnapshots() {
+  try { return JSON.parse(fs.readFileSync(SNAPSHOT_FILE, "utf8")); }
+  catch { return { snapshots: [] }; }
+}
+function saveSnapshots(data) {
+  fs.writeFileSync(SNAPSHOT_FILE, JSON.stringify(data, null, 2));
+}
+
+// ── Slack alert helper ─────────────────────────────────────────────
+function sendSlackAlert(text, blocks) {
+  return new Promise((resolve) => {
+    if (!SLACK_WEBHOOK) { resolve({ ok: false, error: "SLACK_WEBHOOK not configured" }); return; }
+    const body = JSON.stringify(blocks ? { text, blocks } : { text });
+    const url = new URL(SLACK_WEBHOOK);
+    const req = https.request({
+      hostname: url.hostname,
+      path: url.pathname,
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Content-Length": body.length },
+    }, (res) => {
+      let buf = "";
+      res.on("data", c => buf += c);
+      res.on("end", () => resolve({ ok: res.statusCode === 200, body: buf }));
+    });
+    req.on("error", err => resolve({ ok: false, error: err.message }));
+    req.write(body);
+    req.end();
+  });
+}
+
+// ── Get S3 bucket size from CloudWatch (free, updated daily) ───────
+async function getBucketSize(bucketName, regionClient) {
+  try {
+    const cmd = new GetMetricStatisticsCommand({
+      Namespace:  "AWS/S3",
+      MetricName: "BucketSizeBytes",
+      Dimensions: [
+        { Name: "BucketName", Value: bucketName },
+        { Name: "StorageType", Value: "StandardStorage" },
+      ],
+      StartTime:  new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // last 5 days
+      EndTime:    new Date(),
+      Period:     86400, // 1 day
+      Statistics: ["Average"],
+    });
+    const res = await regionClient.send(cmd);
+    if (!res.Datapoints?.length) return 0;
+    // Latest datapoint
+    const latest = res.Datapoints.sort((a, b) => b.Timestamp - a.Timestamp)[0];
+    return Math.round(latest.Average || 0);
+  } catch { return 0; }
+}
+
+// ── List all buckets with current size ─────────────────────────────
+async function listBucketsWithSizes() {
+  const listResp = await s3Client.send(new ListBucketsCommand({}));
+  const buckets  = listResp.Buckets || [];
+
+  const result = await Promise.all(buckets.map(async (b) => {
+    // Get bucket region (S3 metrics live in the bucket's region)
+    let region = "ap-southeast-1";
+    try {
+      const locResp = await s3Client.send(new GetBucketLocationCommand({ Bucket: b.Name }));
+      region = locResp.LocationConstraint || "us-east-1"; // null means us-east-1
+    } catch {}
+
+    const regionCW = region === "ap-southeast-1" ? client : new CloudWatchClient({ region });
+    const sizeBytes = await getBucketSize(b.Name, regionCW);
+    return {
+      name:       b.Name,
+      created:    b.CreationDate,
+      region,
+      sizeBytes,
+      sizeMB:     +(sizeBytes / 1024 / 1024).toFixed(2),
+      sizeGB:     +(sizeBytes / 1024 / 1024 / 1024).toFixed(3),
+    };
+  }));
+
+  return result;
+}
 
 app.use(cors());
 
@@ -452,6 +549,142 @@ app.get("/rds-performance", async (req, res) => {
     res.json({ clusters: instanceData, lastUpdated: new Date().toLocaleTimeString("en-SG") });
   } catch (err) {
     console.error("RDS performance error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /s3-growth — current S3 buckets with week-over-week comparison ────────
+app.get("/s3-growth", async (req, res) => {
+  try {
+    const current = await listBucketsWithSizes();
+    const data    = loadSnapshots();
+    const snapshots = data.snapshots || [];
+    const lastSnapshot = snapshots[snapshots.length - 1] || null;
+    const prevSnapshot = snapshots[snapshots.length - 2] || null;
+
+    // Build map of previous-week sizes
+    const lastWeekMap = {};
+    if (lastSnapshot) {
+      lastSnapshot.buckets.forEach(b => { lastWeekMap[b.name] = b.sizeBytes; });
+    }
+    const prevWeekMap = {};
+    if (prevSnapshot) {
+      prevSnapshot.buckets.forEach(b => { prevWeekMap[b.name] = b.sizeBytes; });
+    }
+
+    const buckets = current.map(b => {
+      const lastSize = lastWeekMap[b.name] ?? null;
+      const prevSize = prevWeekMap[b.name] ?? null;
+      let pctChange = null;
+      if (lastSize !== null && lastSize > 0) {
+        pctChange = +(((b.sizeBytes - lastSize) / lastSize) * 100).toFixed(2);
+      } else if (lastSize === 0 && b.sizeBytes > 0) {
+        pctChange = "NEW";
+      }
+      return {
+        ...b,
+        lastWeekBytes: lastSize,
+        lastWeekMB:    lastSize !== null ? +(lastSize / 1024 / 1024).toFixed(2) : null,
+        prevWeekBytes: prevSize,
+        pctChange,
+        alert: typeof pctChange === "number" && pctChange > GROWTH_THRESHOLD_PCT,
+      };
+    });
+
+    res.json({
+      buckets,
+      lastSnapshotDate: lastSnapshot?.date || null,
+      prevSnapshotDate: prevSnapshot?.date || null,
+      threshold:        GROWTH_THRESHOLD_PCT,
+      lastUpdated:      new Date().toLocaleString("en-SG"),
+    });
+  } catch (err) {
+    console.error("S3 growth error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /s3-snapshot — take a snapshot of all bucket sizes ───────────────────
+app.post("/s3-snapshot", async (req, res) => {
+  try {
+    const buckets = await listBucketsWithSizes();
+    const data    = loadSnapshots();
+    const lastSnapshot = data.snapshots[data.snapshots.length - 1] || null;
+
+    const newSnapshot = {
+      date:    new Date().toISOString(),
+      buckets: buckets.map(b => ({ name: b.name, sizeBytes: b.sizeBytes, region: b.region })),
+    };
+    data.snapshots.push(newSnapshot);
+
+    // Keep only last 12 snapshots (3 months)
+    if (data.snapshots.length > 12) data.snapshots = data.snapshots.slice(-12);
+    saveSnapshots(data);
+
+    // Detect and alert on >5% growth
+    const alerts = [];
+    if (lastSnapshot) {
+      const lastMap = Object.fromEntries(lastSnapshot.buckets.map(b => [b.name, b.sizeBytes]));
+      buckets.forEach(b => {
+        const lastSize = lastMap[b.name];
+        if (lastSize === undefined) return;
+        if (lastSize === 0) return; // can't compute % from zero
+        const pct = ((b.sizeBytes - lastSize) / lastSize) * 100;
+        if (pct > GROWTH_THRESHOLD_PCT) {
+          alerts.push({ name: b.name, pct: +pct.toFixed(2), currentMB: b.sizeMB, lastMB: +(lastSize / 1024 / 1024).toFixed(2) });
+        }
+      });
+    }
+
+    // Send Slack alert if any high-growth buckets
+    if (alerts.length > 0) {
+      const lines = alerts.map(a =>
+        `• *${a.name}* — grew *${a.pct}%* this week (${a.lastMB} MB → ${a.currentMB} MB)`
+      ).join("\n");
+      await sendSlackAlert(
+        `🚨 S3 Growth Alert — ${alerts.length} bucket(s) exceeded ${GROWTH_THRESHOLD_PCT}% growth`,
+        [
+          {
+            type: "header",
+            text: { type: "plain_text", text: "🚨 S3 Storage Growth Alert", emoji: true }
+          },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `*${alerts.length} bucket(s)* exceeded the *${GROWTH_THRESHOLD_PCT}%* weekly growth threshold:\n\n${lines}`
+            }
+          },
+          {
+            type: "context",
+            elements: [
+              { type: "mrkdwn", text: `📅 ${new Date().toLocaleString("en-SG")}  |  eLit CloudWatch Dashboard` }
+            ]
+          }
+        ]
+      );
+    } else if (lastSnapshot) {
+      // Optional: send weekly all-clear summary
+      await sendSlackAlert(
+        `✅ Weekly S3 Report — All ${buckets.length} bucket(s) under ${GROWTH_THRESHOLD_PCT}% growth threshold`,
+        [
+          {
+            type: "section",
+            text: { type: "mrkdwn", text: `✅ *Weekly S3 Report* — ${buckets.length} bucket(s) checked, no alerts.\n_Threshold: ${GROWTH_THRESHOLD_PCT}% week-over-week growth_` }
+          }
+        ]
+      );
+    }
+
+    res.json({
+      ok: true,
+      snapshotDate: newSnapshot.date,
+      bucketsCount: buckets.length,
+      alertsCount:  alerts.length,
+      alerts,
+    });
+  } catch (err) {
+    console.error("S3 snapshot error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

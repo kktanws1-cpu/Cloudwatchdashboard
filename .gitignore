@@ -26,6 +26,14 @@ aws-credentials*
 # Local config
 *.local
 
+# S3 snapshot data (contains bucket info, kept on server)
+cloudwatch-api/s3-snapshots.json
+
+# Other local files
+.rds-database-1.json
+task-dashboard/
+Documentation/Mailpit-on-AWS-Setup.md
+
 # Claude AI working files
 .claude/
 
