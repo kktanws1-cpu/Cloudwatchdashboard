@@ -166,7 +166,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="spCD5IdJFISM8aWQ-gpm-16" parent="1" style="html=1;overflow=block;blockSpacing=1;whiteSpace=wrap;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;grStroke=0;verticalAlign=top;align=left;grIconSize=40;spacingLeft=45;spacingTop=5;strokeColor=#0E82B8;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;fontSize=16.7;fontFamily=Tahoma;fontColor=#333333;fontStyle=1;spacing=0;strokeOpacity=100;fillOpacity=13;rounded=1;absoluteArcSize=1;arcSize=9;fillColor=#147eba;strokeWidth=0;lucidId=ep4ENRwHa~36;" value="Management" vertex="1">
-          <mxGeometry height="190" width="1661" x="580" y="2432" as="geometry" />
+          <mxGeometry height="190" width="1750" x="580" y="2432" as="geometry" />
         </mxCell>
         <mxCell id="spCD5IdJFISM8aWQ-gpm-23" parent="1" style="html=1;overflow=block;blockSpacing=1;whiteSpace=wrap;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;grStroke=0;verticalAlign=top;align=left;grIconSize=40;spacingLeft=45;spacingTop=5;strokeColor=#0E82B8;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;fontSize=16.7;fontFamily=Tahoma;fontColor=#333333;fontStyle=1;spacing=0;strokeOpacity=100;fillOpacity=13;rounded=1;absoluteArcSize=1;arcSize=9;fillColor=#147eba;strokeWidth=0;lucidId=ep4EBLgl~jkX;" value="Web Tier" vertex="1">
           <mxGeometry height="262" width="301" x="1621" y="443" as="geometry" />
@@ -217,8 +217,8 @@
         <mxCell id="spCD5IdJFISM8aWQ-gpm-93" parent="spCD5IdJFISM8aWQ-gpm-28" style="html=1;overflow=block;blockSpacing=1;whiteSpace=wrap;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;pointerEvents=1;fontSize=13.3;fontFamily=Tahoma;fontColor=#333333;fontStyle=1;spacing=0;strokeOpacity=100;rounded=1;absoluteArcSize=1;arcSize=9;fillColor=#d86613;strokeWidth=2.3;lucidId=ep4EEafIHTM0;" value="Batch Job, IIS&#xa;" vertex="1">
           <mxGeometry height="49" width="49" x="108" y="160" as="geometry" />
         </mxCell>
-        <mxCell id="mailpit-ec2-001" parent="spCD5IdJFISM8aWQ-gpm-28" style="html=1;overflow=block;blockSpacing=1;whiteSpace=wrap;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;pointerEvents=1;fontSize=11.7;fontFamily=Tahoma;fontColor=#333333;fontStyle=1;spacing=0;strokeOpacity=100;rounded=1;absoluteArcSize=1;arcSize=9;fillColor=#d86613;strokeWidth=2.3;" value="Mailpit&#xa;(Email Capture)" vertex="1">
-          <mxGeometry height="49" width="49" x="64" y="278" as="geometry" />
+        <mxCell id="mailpit-ec2-001" parent="KQcczcct8uQ88k8Urhg--2" style="html=1;overflow=block;blockSpacing=1;whiteSpace=wrap;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;pointerEvents=1;fontSize=11.7;fontFamily=Tahoma;fontColor=#333333;fontStyle=1;spacing=0;strokeOpacity=100;rounded=1;absoluteArcSize=1;arcSize=9;fillColor=#d86613;strokeWidth=2.3;" value="Mailpit&#xa;(Email Capture)" vertex="1">
+          <mxGeometry height="49" width="49" x="1812" y="128" as="geometry" />
         </mxCell>
         <mxCell id="spCD5IdJFISM8aWQ-gpm-29" parent="1" style="html=1;overflow=block;blockSpacing=1;whiteSpace=wrap;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;grStroke=0;verticalAlign=top;align=left;grIconSize=40;spacingLeft=45;spacingTop=5;strokeColor=#0E82B8;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;fontSize=16.7;fontFamily=Tahoma;fontColor=#333333;fontStyle=1;spacing=0;strokeOpacity=100;fillOpacity=13;rounded=1;absoluteArcSize=1;arcSize=9;fillColor=#147eba;strokeWidth=0;lucidId=ep4EV4BjxiEh;" value="DB Tier" vertex="1">
           <mxGeometry height="718" width="528" x="2224" y="1374" as="geometry" />
@@ -596,7 +596,7 @@
           <mxGeometry height="180" width="643.73" x="2030" y="-747" as="geometry" />
         </mxCell>
         <mxCell id="KQcczcct8uQ88k8Urhg--2" parent="1" style="html=1;overflow=block;blockSpacing=1;whiteSpace=wrap;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc;verticalAlign=top;align=left;grIconSize=40;spacingLeft=45;spacingTop=5;fontColor=#000000;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;fontSize=16.7;fontFamily=Tahoma;fontStyle=1;spacing=0;strokeColor=#248814;strokeOpacity=100;fillOpacity=0;rounded=1;absoluteArcSize=1;arcSize=9;fillColor=#ffffff;strokeWidth=2.3;lucidId=ep4E5vLhlDnT;" value="Management Compartment (Type 1 - Mixed) " vertex="1">
-          <mxGeometry height="315" width="1880" x="428" y="2358" as="geometry" />
+          <mxGeometry height="315" width="2000" x="428" y="2358" as="geometry" />
         </mxCell>
         <mxCell id="spCD5IdJFISM8aWQ-gpm-72" parent="KQcczcct8uQ88k8Urhg--2" style="html=1;overflow=block;blockSpacing=1;whiteSpace=wrap;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;pointerEvents=1;fontSize=13.3;fontFamily=Tahoma;fontColor=#333333;fontStyle=1;spacing=0;strokeOpacity=100;rounded=1;absoluteArcSize=1;arcSize=9;fillColor=#d86613;strokeWidth=2.3;lucidId=ep4E~XSGFMw4;" value="Tooling Server" vertex="1">
           <mxGeometry height="49" width="49" x="743" y="127" as="geometry" />
@@ -725,17 +725,23 @@
         <!-- ===== Mailpit Internet Access (intranet staff on internet machines) ===== -->
 
         <!-- WOG Domain entry point (internet-accessible DNS for Mailpit) -->
-        <mxCell id="mailpit-wog-domain" parent="1" style="html=1;rounded=1;arcSize=20;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontFamily=Tahoma;fontStyle=1;verticalAlign=middle;align=center;whiteSpace=wrap;" value="WOG Domain&#xa;mailpit.example.gov.sg" vertex="1">
-          <mxGeometry x="640" y="-510" width="190" height="56" as="geometry"/>
+        <mxCell id="mailpit-wog-domain" parent="1" style="html=1;rounded=1;arcSize=20;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Tahoma;fontStyle=1;verticalAlign=middle;align=center;whiteSpace=wrap;" value="Internal URL (WOG domain)&#xa;mailpit.intranet.gov.sg&#xa;— not internet-facing" vertex="1">
+          <mxGeometry x="960" y="-510" width="190" height="56" as="geometry"/>
         </mxCell>
 
         <!-- Route 53 / DNS for Mailpit WOG domain -->
-        <mxCell id="mailpit-route53" parent="1" style="html=1;overflow=block;blockSpacing=1;whiteSpace=wrap;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.route_53;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;pointerEvents=1;fontSize=11;fontFamily=Tahoma;fontColor=#333333;fontStyle=1;spacing=0;strokeOpacity=100;rounded=1;absoluteArcSize=1;arcSize=9;fillColor=#8c4fff;strokeWidth=2.3;" value="Route 53&#xa;(WOG Domain)" vertex="1">
-          <mxGeometry x="845" y="-495" width="49" height="49" as="geometry"/>
+        <mxCell id="mailpit-route53" parent="1" style="html=1;overflow=block;blockSpacing=1;whiteSpace=wrap;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.route_53;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;pointerEvents=1;fontSize=11;fontFamily=Tahoma;fontColor=#333333;fontStyle=1;spacing=0;strokeOpacity=100;rounded=1;absoluteArcSize=1;arcSize=9;fillColor=#8c4fff;strokeWidth=2.3;" value="Route 53&#xa;(Private/Internal Zone)" vertex="1">
+          <mxGeometry x="1200" y="-495" width="49" height="49" as="geometry"/>
         </mxCell>
 
         <!-- Arrow: Intranet staff (internet machine) → WOG Domain -->
-        <mxCell id="mailpit-edge-user-wog" edge="1" parent="1" source="spCD5IdJFISM8aWQ-gpm-111" target="mailpit-wog-domain" style="html=1;jettySize=18;whiteSpace=wrap;fontSize=11;strokeColor=#0050ef;strokeWidth=2;rounded=1;arcSize=12;edgeStyle=orthogonalEdgeStyle;startArrow=none;endArrow=block;endFill=1;fontFamily=Tahoma;" value="HTTPS">
+        <mxCell id="mailpit-edge-user-wog" edge="1" parent="1" source="spCD5IdJFISM8aWQ-gpm-111" target="mailpit-zscaler" style="html=1;jettySize=18;whiteSpace=wrap;fontSize=11;strokeColor=#0050ef;strokeWidth=2;rounded=1;arcSize=12;edgeStyle=orthogonalEdgeStyle;startArrow=none;endArrow=block;endFill=1;fontFamily=Tahoma;" value="HTTPS (internet)">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="mailpit-zscaler" parent="1" style="html=1;rounded=1;arcSize=15;fillColor=#0f9d58;strokeColor=#0b7a44;fontColor=#ffffff;fontSize=11;fontFamily=Tahoma;fontStyle=1;verticalAlign=middle;align=center;whiteSpace=wrap;" value="Zscaler&#xa;(forces traffic onto Intranet)" vertex="1">
+          <mxGeometry x="700" y="-510" width="150" height="56" as="geometry"/>
+        </mxCell>
+        <mxCell id="mailpit-edge-zscaler-url" edge="1" parent="1" source="mailpit-zscaler" target="mailpit-wog-domain" style="html=1;jettySize=18;whiteSpace=wrap;fontSize=11;strokeColor=#0f9d58;strokeWidth=2;rounded=1;arcSize=12;edgeStyle=orthogonalEdgeStyle;startArrow=none;endArrow=block;endFill=1;fontFamily=Tahoma;" value="Intranet">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
 
@@ -774,8 +780,8 @@
           </mxGeometry>
         </mxCell>
         <!-- Label: Internet machine note for clarity -->
-        <mxCell id="mailpit-note-internet" parent="1" style="html=1;rounded=1;arcSize=10;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=10;fontFamily=Tahoma;fontStyle=2;verticalAlign=middle;align=center;whiteSpace=wrap;" value="Intranet staff use internet&#xa;notebook to access Mailpit&#xa;via WOG domain + CloudFront" vertex="1">
-          <mxGeometry x="370" y="-510" width="195" height="55" as="geometry"/>
+        <mxCell id="mailpit-note-internet" parent="1" style="html=1;rounded=1;arcSize=10;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=10;fontFamily=Tahoma;fontStyle=2;verticalAlign=middle;align=center;whiteSpace=wrap;" value="All users (internet-issued laptop&#xa;or intranet) are forced through&#xa;Zscaler onto the Intranet.&#xa;Effectively, users go via Intranet." vertex="1">
+          <mxGeometry x="350" y="-520" width="215" height="70" as="geometry"/>
         </mxCell>
 
         <!-- ===== End Mailpit Internet Access ===== -->
