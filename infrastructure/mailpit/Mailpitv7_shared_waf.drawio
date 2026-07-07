@@ -725,7 +725,7 @@
         <!-- ===== Mailpit Internet Access (intranet staff on internet machines) ===== -->
 
         <!-- WOG Domain entry point (internet-accessible DNS for Mailpit) -->
-        <mxCell id="mailpit-wog-domain" parent="1" style="html=1;rounded=1;arcSize=20;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Tahoma;fontStyle=1;verticalAlign=middle;align=center;whiteSpace=wrap;" value="Internal URL (WOG domain)&#xa;mailpit.intranet.gov.sg&#xa;— not internet-facing" vertex="1">
+        <mxCell id="mailpit-wog-domain" parent="1" style="html=1;rounded=1;arcSize=20;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Tahoma;fontStyle=1;verticalAlign=middle;align=center;whiteSpace=wrap;" value="Internal URL (host-based rule)&#xa;www.mailpit.judiciary.sg&#xa;— not internet-facing" vertex="1">
           <mxGeometry x="960" y="-510" width="190" height="56" as="geometry"/>
         </mxCell>
 
@@ -750,38 +750,34 @@
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
 
-        <!-- CloudFront distribution for Mailpit (internet zone) -->
-        <mxCell id="mailpit-cloudfront" parent="1" style="html=1;overflow=block;blockSpacing=1;whiteSpace=wrap;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront;verticalLabelPosition=bottom;align=center;verticalAlign=top;strokeColor=#ffffff;pointerEvents=1;fontSize=11;fontFamily=Tahoma;fontColor=#333333;fontStyle=1;spacing=0;strokeOpacity=100;rounded=1;absoluteArcSize=1;arcSize=9;fillColor=#e7157b;strokeWidth=2.3;" value="Mailpit CDN&#xa;(CloudFront)&#xa;[Shared WAF]" vertex="1">
-          <mxGeometry x="572" y="360" width="49" height="49" as="geometry"/>
-        </mxCell>
-
-        <!-- Arrow: Route 53 → CloudFront -->
-        <mxCell id="mailpit-edge-r53-cf" edge="1" parent="1" source="mailpit-route53" target="mailpit-cloudfront" style="html=1;jettySize=18;whiteSpace=wrap;fontSize=11;strokeColor=#0050ef;strokeWidth=2;rounded=1;arcSize=12;edgeStyle=orthogonalEdgeStyle;startArrow=none;endArrow=block;endFill=1;fontFamily=Tahoma;" value="">
+        <!-- Route 53 resolves Mailpit hostname to the existing shared Web Tier ALB (Arun's design) -->
+        <!-- Arrow: Route 53 → Common Services Frontend ALB (Intranet Web Tier) -->
+        <mxCell id="mailpit-edge-r53-alb" edge="1" parent="1" source="mailpit-route53" target="spCD5IdJFISM8aWQ-gpm-84" style="html=1;jettySize=18;whiteSpace=wrap;fontSize=11;strokeColor=#0050ef;strokeWidth=2;rounded=1;arcSize=12;edgeStyle=orthogonalEdgeStyle;startArrow=none;endArrow=block;endFill=1;fontFamily=Tahoma;" value="CNAME to Common&#xa;Services Frontend ALB">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="869" y="-390"/>
-              <mxPoint x="869" y="340"/>
-              <mxPoint x="596" y="340"/>
+              <mxPoint x="1224" y="-390"/>
+              <mxPoint x="1224" y="300"/>
+              <mxPoint x="1878" y="300"/>
             </Array>
           </mxGeometry>
         </mxCell>
 
         <!-- Firewall rule note: open HTTPS from CloudFront to Mailpit ALB -->
-        <mxCell id="mailpit-fw-rule" parent="1" style="html=1;rounded=1;arcSize=15;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontFamily=Tahoma;fontStyle=0;verticalAlign=middle;align=center;whiteSpace=wrap;" value="Firewall Rule&#xa;Allow HTTPS (443)&#xa;CloudFront &gt; EC2:8025&#xa;WAF: reuse existing WebACL" vertex="1">
-          <mxGeometry x="1455" y="420" width="195" height="65" as="geometry"/>
+        <mxCell id="mailpit-fw-rule" parent="1" style="html=1;rounded=1;arcSize=15;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontFamily=Tahoma;fontStyle=0;verticalAlign=middle;align=center;whiteSpace=wrap;" value="Listener Rule on shared ALB&#xa;Host-header: www.mailpit.judiciary.sg&#xa;Forward &gt; mailpit-tg (EC2:8025)&#xa;SG: allow 8025 from ALB SG only" vertex="1">
+          <mxGeometry x="1960" y="640" width="215" height="65" as="geometry"/>
         </mxCell>
         <!-- Arrow: CloudFront → Mailpit ALB (crosses firewall - dashed blue line) -->
-        <mxCell id="mailpit-edge-cf-ec2" edge="1" parent="1" source="mailpit-cloudfront" target="mailpit-ec2-001" style="html=1;jettySize=18;whiteSpace=wrap;fontSize=11;fontFamily=Tahoma;strokeColor=#0050ef;strokeWidth=2.5;rounded=1;arcSize=12;edgeStyle=orthogonalEdgeStyle;startArrow=none;endArrow=block;endFill=1;dashed=1;dashPattern=8 4;" value="HTTPS (443) direct to EC2">
+        <mxCell id="mailpit-edge-alb-ec2" edge="1" parent="1" source="spCD5IdJFISM8aWQ-gpm-84" target="mailpit-ec2-001" style="html=1;jettySize=18;whiteSpace=wrap;fontSize=11;fontFamily=Tahoma;strokeColor=#0050ef;strokeWidth=2.5;rounded=1;arcSize=12;edgeStyle=orthogonalEdgeStyle;startArrow=none;endArrow=block;endFill=1;dashed=1;dashPattern=8 4;" value="Host-based rule &gt; Mgmt tier (8025)">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="596" y="450"/>
-              <mxPoint x="2439" y="450"/>
+              <mxPoint x="2900" y="580"/>
+              <mxPoint x="2900" y="2510"/>
             </Array>
           </mxGeometry>
         </mxCell>
         <!-- Label: Internet machine note for clarity -->
-        <mxCell id="mailpit-note-internet" parent="1" style="html=1;rounded=1;arcSize=10;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=10;fontFamily=Tahoma;fontStyle=2;verticalAlign=middle;align=center;whiteSpace=wrap;" value="All users (internet-issued laptop&#xa;or intranet) are forced through&#xa;Zscaler onto the Intranet.&#xa;Effectively, users go via Intranet." vertex="1">
-          <mxGeometry x="350" y="-520" width="215" height="70" as="geometry"/>
+        <mxCell id="mailpit-note-internet" parent="1" style="html=1;rounded=1;arcSize=10;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=10;fontFamily=Tahoma;fontStyle=2;verticalAlign=middle;align=center;whiteSpace=wrap;" value="All users (internet-issued laptop&#xa;or intranet) are forced through&#xa;Zscaler onto the Intranet, then via&#xa;the existing Common Services&#xa;Frontend ALB (Web Tier) to Mgmt." vertex="1">
+          <mxGeometry x="350" y="-530" width="225" height="85" as="geometry"/>
         </mxCell>
 
         <!-- ===== End Mailpit Internet Access ===== -->
@@ -810,16 +806,6 @@
 
         <!-- Edge: existing WAF → State Courts CDN -->
         <mxCell id="shared-waf-edge-stc" edge="1" parent="1" source="shared-waf-icon" target="n8Q9RrP7ufDMYojjwpZ0-4" style="html=1;jettySize=12;whiteSpace=wrap;fontSize=10;fontFamily=Tahoma;strokeColor=#dd344c;strokeWidth=1.5;rounded=1;arcSize=12;edgeStyle=orthogonalEdgeStyle;startArrow=none;endArrow=open;endFill=0;dashed=1;dashPattern=4 3;" value="">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-
-        <!-- Cross-reference note near Mailpit CloudFront -->
-        <mxCell id="mailpit-waf-xref" parent="1" style="html=1;rounded=1;arcSize=10;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Tahoma;verticalAlign=middle;align=center;whiteSpace=wrap;" value="Attach Mailpit CloudFront to&#xa;existing WAF WebACL (shared-waf-icon)&#xa;— no new WAF needed" vertex="1">
-          <mxGeometry x="540" y="440" width="215" height="55" as="geometry"/>
-        </mxCell>
-
-        <!-- Edge: cross-reference arrow from Mailpit CloudFront to shared WAF note -->
-        <mxCell id="mailpit-waf-xref-edge" edge="1" parent="1" source="mailpit-cloudfront" target="mailpit-waf-xref" style="html=1;jettySize=12;whiteSpace=wrap;fontSize=10;fontFamily=Tahoma;strokeColor=#dd344c;strokeWidth=1.5;rounded=1;arcSize=12;edgeStyle=orthogonalEdgeStyle;startArrow=none;endArrow=open;endFill=0;dashed=1;dashPattern=4 3;" value="uses">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
 

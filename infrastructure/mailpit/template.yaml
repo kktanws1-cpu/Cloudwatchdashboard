@@ -1,19 +1,21 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
   Single EC2 instance running Mailpit (fake SMTP server + web UI) for
-  capturing test emails. The web UI is served on port 8025 and the SMTP
-  listener on port 1025. Internet access (for intranet staff on WOG notebooks)
-  is via CloudFront + WAF pointing directly at the Elastic IP — no ALB needed.
+  capturing test emails, deployed in the Management tier. The web UI
+  (port 8025) is reached via the existing Common Services Frontend ALB
+  (the same shared ALB used by the other applications) through a
+  host-based routing rule pointing at this instance's target group —
+  no dedicated CloudFront distribution or public IP is used.
   Instance management is via AWS Systems Manager Session Manager.
 
 Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
-    Description: VPC to launch the Mailpit instance into (must have an Internet Gateway).
+    Description: VPC of the Management tier (same VPC as the Common Services Frontend ALB).
 
   SubnetId:
     Type: AWS::EC2::Subnet::Id
-    Description: Public subnet (with a route to an Internet Gateway) to launch the instance into.
+    Description: Private subnet in the Management tier to launch the instance into.
 
   InstanceType:
     Type: String
@@ -24,16 +26,31 @@ Parameters:
       - t2.micro
     Description: EC2 instance size. t3.micro is sufficient for Mailpit.
 
-  CloudFrontPrefixListId:
+  ExistingAlbListenerArn:
     Type: String
     Description: >
-      Managed prefix list ID for CloudFront origin-facing IPs. Used to restrict
-      port 8025 (web UI) so only CloudFront can reach it directly.
-      Get the ID by running:
-        aws ec2 describe-managed-prefix-lists --region ap-southeast-1
-          --filters Name=prefix-list-name,Values=com.amazonaws.global.cloudfront.origin-facing
-          --query "PrefixLists[0].PrefixListId" --output text
-    AllowedPattern: '^pl-[0-9a-f]+$'
+      ARN of the existing HTTPS listener on the Common Services Frontend ALB
+      (Web Tier). A new host-based rule is added to this listener to route
+      Mailpit's hostname to this instance's target group.
+
+  ExistingAlbSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: >
+      Security group attached to the Common Services Frontend ALB. Used to
+      restrict inbound port 8025 on the Mailpit instance to traffic from
+      that ALB only.
+
+  MailpitHostname:
+    Type: String
+    Description: >
+      Internal hostname used for host-based routing on the shared ALB,
+      e.g. www.mailpit.judiciary.sg (internal DNS, not internet-resolvable).
+
+  ListenerRulePriority:
+    Type: Number
+    Description: >
+      Priority for the new listener rule on the shared ALB. Must not
+      collide with any existing rule priority on that listener.
 
   SmtpAllowedCidr:
     Type: String
@@ -56,14 +73,14 @@ Resources:
   MailpitSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow CloudFront to Mailpit web UI and internal SMTP
+      GroupDescription: Allow the shared Frontend ALB to Mailpit web UI, and internal SMTP
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 8025
           ToPort: 8025
-          SourcePrefixListId: !Ref CloudFrontPrefixListId
-          Description: Mailpit web UI - CloudFront origin IPs only
+          SourceSecurityGroupId: !Ref ExistingAlbSecurityGroupId
+          Description: Mailpit web UI - Common Services Frontend ALB only
         - IpProtocol: tcp
           FromPort: 1025
           ToPort: 1025
@@ -127,25 +144,52 @@ Resources:
             -e MP_DATABASE=/data/mailpit.db \
             axllent/mailpit:latest
 
-  MailpitEip:
-    Type: AWS::EC2::EIP
+  MailpitTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Domain: vpc
-      InstanceId: !Ref MailpitInstance
+      Name: mailpit-tg
+      VpcId: !Ref VpcId
+      Protocol: HTTP
+      Port: 8025
+      TargetType: instance
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Targets:
+        - Id: !Ref MailpitInstance
+          Port: 8025
       Tags:
         - Key: Name
-          Value: mailpit
+          Value: mailpit-tg
+
+  MailpitListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref ExistingAlbListenerArn
+      Priority: !Ref ListenerRulePriority
+      Conditions:
+        - Field: host-header
+          HostHeaderConfig:
+            Values:
+              - !Ref MailpitHostname
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref MailpitTargetGroup
 
 Outputs:
-  CloudFrontOrigin:
-    Description: >
-      Set this as the CloudFront origin domain (HTTP, port 8025).
-      CloudFront forwards HTTPS from users to this HTTP origin.
-    Value: !Sub '${MailpitEip}:8025'
+  TargetGroupArn:
+    Description: ARN of the Mailpit target group, for reference on the shared ALB listener rule.
+    Value: !Ref MailpitTargetGroup
+
+  ListenerRuleArn:
+    Description: ARN of the listener rule added to the Common Services Frontend ALB.
+    Value: !Ref MailpitListenerRule
 
   SmtpEndpoint:
-    Description: SMTP endpoint for sending test emails (no authentication required)
-    Value: !Sub '${MailpitEip}:1025'
+    Description: SMTP endpoint for sending test emails (no authentication required), private IP only.
+    Value: !Sub '${MailpitInstance.PrivateIp}:1025'
 
   InstanceId:
     Description: EC2 instance ID
